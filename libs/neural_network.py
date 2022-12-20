@@ -13,20 +13,20 @@ def neural_network():
             name_of_image, pixels, image, width, height = open_image()
             n, m, p, e = data_input(width)
 
-            first_weight_name = "weights\\" + name_of_image + "_w1.pickle"
-            second_weight_name = "weights\\" + name_of_image + "_w2.pickle"
+            first_weight_name = "heaviness\\" + name_of_image + "_first_w.pickle"
+            second_weight_name = "heaviness\\" + name_of_image + "_second_w.pickle"
 
             pixels_vector, copy_pixels = cut_into_pieces(pixels, width, height, n, m)
 
             first_weight, second_weight = creation_of_weights(pixels_vector, p)
 
-            Y, delta_X, first_weight, second_weight = learn(pixels_vector, first_weight, second_weight)
+            Y_matrx, delta_X, first_weight, second_weight = learn(pixels_vector, first_weight, second_weight)
 
             count_rounds = 0
             while find_Eq(delta_X) > e:
                 print(f'Итерация: {count_rounds} | Ошибка: {find_Eq(delta_X)}')
                 count_rounds += 1
-                Y, delta_X, first_weight, second_weight = learn(pixels_vector, first_weight, second_weight)
+                Y_matrx, delta_X, first_weight, second_weight = learn(pixels_vector, first_weight, second_weight)
 
             with open(f'{first_weight_name}', 'wb') as file:
                 pickle.dump(first_weight, file)
@@ -45,45 +45,41 @@ def neural_network():
             name_of_image, pixels, image, width, height = open_image()
             n, m = read_from_file(name_of_image)
 
-            first_weight_name = "weights\\" + name_of_image + "_w1.pickle"
-            second_weight_name = "weights\\" + name_of_image + "_w2.pickle"
+            first_weight_name = "heaviness\\" + name_of_image + "_first_w.pickle"
+            second_weight_name = "heaviness\\" + name_of_image + "_second_w.pickle"
 
             pixels_vector, copy_pixels = cut_into_pieces(pixels, width, height, n, m)
-
             first_weight, second_weight = load_weights(first_weight_name, second_weight_name)
 
-            Y, delta_X, first_weight, second_weight = learn(pixels_vector, first_weight, second_weight)
+            Y_matrx, delta_X, first_weight, second_weight = learn(pixels_vector, first_weight, second_weight)
 
-            with open('archive\\' + name_of_image + '.pickle', 'wb') as file:
-                pickle.dump((Y, pixels_vector, n, copy_pixels), file)
+            with open('archive' + name_of_image + '.pickle', 'wb') as file:
+                pickle.dump((Y_matrx, pixels_vector, n, copy_pixels), file)
 
-            print("Сжатый файл: archive\\" + name_of_image + ".pickle")
+            print("Сжатый файл: archive" + name_of_image + ".pickle")
 
         elif choice == '3':
-            pass
+            
+            first_weight_name = "heaviness\\" + name_of_image + "_first_w.pickle"
+            second_weight_name = "heaviness\\" + name_of_image + "_second_w.pickle"
+
             name_of_image, pixels, image, width, height = open_image()
             n, m = read_from_file(name_of_image)
-
-            first_weight_name = "weights\\" + name_of_image + "_w1.pickle"
-            second_weight_name = "weights\\" + name_of_image + "_w2.pickle"
-
             first_weight, second_weight = load_weights(first_weight_name, second_weight_name)
 
             with open('archive\\' + name_of_image + '.pickle', 'rb+') as file:
-                Y, pixels_vector, n, copy_pixels = pickle.load(file)
+                Y_matrx, pixels_vector, n, copy_pixels = pickle.load(file)
 
-            fin_res = matrix_multiplication(Y, second_weight)
-
-            out_name_of_image = "fin_res\\" + name_of_image + "_fin_res.png"
+            fin_res = matrix_multiplication(Y_matrx, second_weight)
             colors = recover_of_color(fin_res)
             pixels_list = list_of_pillow(colors, width, height, n, m, copy_pixels)
-            recover = [tuple(element) for pix in pixels_list for element in pix]
-            out_image = Image.new(image.mode, image.size)
+            for pix in pixels_list:
+                for element in pix:
+                    recover = tuple(element)
+            out_image = Image.new(image.mode, image.size, color = 0)
             out_image.putdata(recover)
-            out_image.save(out_name_of_image)
-
-            print(f"Разжатая картинка: {out_name_of_image}")
-
+            out_image.save("fin_res\\" + name_of_image + "_fin_res.png")
+            print("fin_res\\" + name_of_image + "_fin_res.png")
         elif choice == '0':
             flag = False
 
@@ -231,30 +227,35 @@ def data_input(width: int):
 
 def cut_into_pieces(pixels, width: int, height: int, n: int, m: int):
     fin_res = []
+    cond_1 = m + amount_of_width
+    cond_2 = n + amount_of_height
+    amount_of_width, amount_of_height = 0, 0
+    r = ((2 * i[0])/255)-1
+    g = ((2 * i[0])/255)-1
+    b = ((2 * i[0])/255)-1
     for i in pixels:
-        pix = [((2 * i[0])/255)-1, ((2 * i[1])/255)-1, ((2 * i[2])/255)-1]     
+        pix = [r, g, b]     
         fin_res.append(pix)
+
         for i in range(height):
-            pixels = fin_res[i * width:(i + 1) * width]    
+            pixels = fin_res[width * (i +1) : i  * width]    
     copy_pixels = copy.deepcopy(pixels)                                             
     fin_res = []
-    amount_of_width = 0
-    amount_of_height = 0
+    
 
-    while m + amount_of_width <= width and n + amount_of_height <= height:
+    while cond_1 <= width and cond_2 <= height:
         line = []
         for i in range(amount_of_width, amount_of_width + n):
             for j in range(amount_of_height, amount_of_height + m):
                 for k in range(3):
                     line.append(pixels[i][j][k])                          
         fin_res.append(line)
-        if m + amount_of_width >= width and n + amount_of_height < height:
+        if cond_1 >= width and cond_2 < height:
             amount_of_width = 0
-            amount_of_height += n
+            amount_of_height = amount_of_height + n
         else:
-            amount_of_width += n
+            amount_of_width = amount_of_width + n
             
-
     return fin_res, copy_pixels
     
 
@@ -312,16 +313,16 @@ def multiplication_number_and_matrix(number, matrix):
 
 
 def learn(vector_of_pixel, first_weight, second_weight):
-    Y = matrix_multiplication(vector_of_pixel, first_weight)
-    X = matrix_multiplication(Y, second_weight)
-    delta_X = deduction(X, vector_of_pixel)
-    a = find_alpha(Y) 
+    Y_matrx = matrix_multiplication(vector_of_pixel, first_weight)
+    X_matrx = matrix_multiplication(Y_matrx, second_weight)
+    delta_X = deduction(X_matrx, vector_of_pixel)
+    a = find_alpha(Y_matrx) 
 
     weight_1_out = deduction(first_weight, multiplication_number_and_matrix(
-        a, matrix_multiplication(matrix_multiplication(process_of_transpose(X), delta_X), process_of_transpose(second_weight))))
+        a, matrix_multiplication(matrix_multiplication(process_of_transpose(X_matrx), delta_X), process_of_transpose(second_weight))))
 
     weight_2_out = deduction(second_weight, multiplication_number_and_matrix(a,
-                                                    matrix_multiplication(process_of_transpose(Y), delta_X)))
+                                                    matrix_multiplication(process_of_transpose(Y_matrx), delta_X)))
 
-    return Y, delta_X, weight_1_out, weight_2_out
+    return Y_matrx, delta_X, weight_1_out, weight_2_out
 
